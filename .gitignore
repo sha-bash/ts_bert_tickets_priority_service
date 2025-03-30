@@ -4,5 +4,5 @@ venv
 *.log
 *.csv
 __pycache__
-/data/config/
+/ml_service/data/config/
 /ml_service/app/models/
