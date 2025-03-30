@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 # Константы
 #DATA_PATH = os.path.join('data', 'processed', 'merged_requests_without_dubl.csv')
-DATA_PATH = os.path.join('data', 'processed', 'processed_requests_without_dubl.csv')
+DATA_PATH = os.path.join('ml_service','data', 'processed', 'processed_requests_without_dubl.csv')
 MODEL_CONFIG_PATH = os.path.join('ml_service', 'app','configs', 'multiclass_config.yaml')
 SAVED_MODEL_AND_TOKENIZER_PATH = os.path.join('ml_service', 'app','models', 'saved_models')
 LABEL_MAPPING_PATH = os.path.join(SAVED_MODEL_AND_TOKENIZER_PATH, 'label_mapping.json')
@@ -198,11 +198,6 @@ class TextDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.labels)
-
-
-
-
-
 
 
 def main():
