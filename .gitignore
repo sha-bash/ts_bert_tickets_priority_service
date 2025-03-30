@@ -1,4 +1,8 @@
 private
 venv
 .env
+*.log
+*.csv
 __pycache__
+/data/config/
+/ml_service/app/models/
