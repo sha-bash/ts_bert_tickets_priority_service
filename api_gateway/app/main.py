@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from lifispan import lifespan
 from dependencies import SessionDependency
 from utils.model_loader import process_text  
-import app.shema as shema
+import shema as shema
 
 
 logging.basicConfig(level=logging.INFO)

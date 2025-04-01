@@ -3,7 +3,7 @@ import pandas as pd
 import logging
 from tqdm import tqdm
 from db.db import DatabaseManager
-from api_gateway.app.utils.preprocess import TextPreprocessor
+from ml_service.data.preprocess import TextPreprocessor
 
 
 os.makedirs("data/logs", exist_ok=True)

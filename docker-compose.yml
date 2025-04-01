@@ -1,5 +1,7 @@
 version: '3.10'
 
+
+
 networks:
   dev_network:
     driver: bridge
@@ -7,6 +9,8 @@ networks:
 services:
   fastapi_app:
     build: .
+    env_file:
+      - .env
     ports:
       - "8080:80"
     environment:
@@ -24,6 +28,7 @@ services:
 
   api_db:
     image: postgres:16.2-alpine3.19
+    env_file: .env
     ports:
       - "5432:5432" 
     environment:
@@ -41,56 +46,5 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  auth_service:
-    build: ./auth_service
-    ports:
-      - "5000:5000"
-    environment:
-      POSTGRES_USER: ${AUTH_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${AUTH_POSTGRES_DB}
-      POSTGRES_HOST: auth_db
-      POSTGRES_PORT: 5432
-    networks:
-      - dev_network
-    depends_on:
-      auth_db:
-        condition: service_healthy
-    restart: unless-stopped
-
-  auth_db:
-    image: postgres:16.2-alpine3.19
-    ports:
-      - "5433:5432"  # Внешний порт 5433, чтобы не конфликтовать с api_db
-    environment:
-      POSTGRES_USER: ${AUTH_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${AUTH_POSTGRES_DB}
-    networks:
-      - dev_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${AUTH_POSTGRES_USER} -d ${AUTH_POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    volumes:
-      - auth_postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-
-  admin_panel:
-    build: ./admin_panel
-    ports:
-      - "8501:8501"
-    environment:
-      AUTH_SERVICE_URL: "http://auth_service:5000"
-      API_SERVICE_URL: "http://fastapi_app:80"
-    networks:
-      - dev_network
-    depends_on:
-      - auth_service
-      - fastapi_app
-    restart: unless-stopped
-
 volumes:
   postgres_data:
-  auth_postgres_data:

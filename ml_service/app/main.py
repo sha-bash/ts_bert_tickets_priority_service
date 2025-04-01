@@ -11,7 +11,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score, classification_report, precision_recall_fscore_support
-from ml_service.app.plots import plot_metrics, plot_confusion_matrix, plot_class_distribution
+from plots import plot_metrics, plot_confusion_matrix, plot_class_distribution
 from transformers import (
     BertModel,
     BertPreTrainedModel,
