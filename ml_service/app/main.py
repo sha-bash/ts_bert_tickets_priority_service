@@ -22,6 +22,7 @@ from transformers import (
 )
 from torch.optim import AdamW
 from torch.cuda.amp import GradScaler, autocast
+from peft import LoraConfig, get_peft_model # Добавил для уменьшения вычислительных затрат при fine-tuning
 
 # Настройка логирования
 logging.basicConfig(
@@ -170,7 +171,11 @@ def read_yaml(file_path):
             training_config[param] = float(value)
         elif param in type_conversion['bool']:
             training_config[param] = bool(value)
-
+    
+    peft_config = config['peft']
+    if 'target_modules' not in peft_config:
+        raise ValueError("Для LORA должны быть указаны слои BERT для адаптации)")
+    
     # Значения по умолчанию для опциональных параметров
     defaults = {
         'max_seq_length': 256,
@@ -285,6 +290,7 @@ def main():
         config = read_yaml(MODEL_CONFIG_PATH)
         model_config = config['model']
         training_config = config['training']
+        peft_config = config['peft']
 
         max_steps = training_config.get('max_steps', -1)
         optim = training_config.get('optim', 'adamw_torch')
@@ -380,6 +386,15 @@ def main():
             json.dump(report, f, indent=4)
         
         return {"accuracy": acc, "precision": precision, "recall": recall, "f1": f1}
+    
+    lora_config = LoraConfig(
+        r=peft_config['r'],              
+        lora_alpha=peft_config['alpha'],    
+        target_modules=peft_config['target_modules'],  
+        lora_dropout=peft_config['dropout'],
+        bias=peft_config['bias'],
+        task_type=peft_config['task_type']  
+    )
 
     # Инициализация модели
     logger.info("Инициализация модели BERT...")
@@ -389,6 +404,8 @@ def main():
             num_classes=len(label_mapping),
             dropout_rate=model_config.get('dropout_rate', 0.3)
         )
+        model = get_peft_model(model, lora_config)
+        model.print_trainable_parameters()
         model.config.id2label = label_mapping
         model.config.label2id = {v: k for k, v in label_mapping.items()}
 
@@ -423,7 +440,7 @@ def main():
         preds = np.argmax(predictions.predictions, axis=1)
         plot_confusion_matrix(val_labels, preds, [label_mapping[i] for i in sorted(label_mapping.keys())], PLOTS_DIR)
         
-        model.save_pretrained(SAVED_MODEL_AND_TOKENIZER_PATH)
+        model.save_pretrained(SAVED_MODEL_AND_TOKENIZER_PATH) 
         tokenizer.save_pretrained(SAVED_MODEL_AND_TOKENIZER_PATH)
         logger.info(f"Модель сохранена в {SAVED_MODEL_AND_TOKENIZER_PATH}")
 
