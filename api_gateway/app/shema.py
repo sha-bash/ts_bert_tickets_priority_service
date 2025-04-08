@@ -9,3 +9,8 @@ class CreateBERTResponse(BaseModel):
     class_score: float  
     task_priority: str  
     priority_score: float
+
+
+class CreateBERTPriorizationResponse(BaseModel): 
+    task_priority: str  
+    priority_score: float

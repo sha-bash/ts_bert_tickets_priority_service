@@ -20,3 +20,11 @@ def process_text(text: str):
         "task_priority": priority_result["label"],
         "priority_score": priority_result["score"]
     }
+
+
+def process_text_prioritization(text: str):
+    priority_result = prioritization_pipeline(text)[0]
+    return {
+        "task_priority": priority_result["label"],
+        "priority_score": priority_result["score"]
+    }
