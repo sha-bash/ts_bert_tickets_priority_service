@@ -4,10 +4,10 @@ model:
 
 training:
   # Основные параметры
-  num_train_epochs: 6                   # Уменьшено для предотвращения переобучения
+  num_train_epochs: 4                   # Уменьшено для предотвращения переобучения
   per_device_train_batch_size: 24       
   per_device_eval_batch_size: 48        # Быстрая оценка
-  learning_rate: 3e-5                   # Слегка увеличен для русского BERT
+  learning_rate: 2e-5                   # Слегка увеличен для русского BERT
   warmup_ratio: 0.1                     # Более гибкий контроль прогрева
   weight_decay: 0.02                    # Усиленная регуляризация
   

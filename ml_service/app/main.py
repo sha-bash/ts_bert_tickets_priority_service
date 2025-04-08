@@ -1,6 +1,7 @@
 import os
 os.environ["TORCHDYNAMO_DISABLE"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ['HF_HUB_DISABLE_SYMLINKS_WARNING'] = '1'
 import json
 import logging
 import yaml
@@ -62,8 +63,15 @@ class CustomBERTClassifier(BertPreTrainedModel):
         self.classifier = nn.Linear(config.hidden_size, num_classes)
         self.post_init()
     
-    def forward(self, input_ids, attention_mask, labels=None):
-        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+    def forward(self, input_ids=None, attention_mask=None, labels=None, inputs_embeds=None, **kwargs):
+        if input_ids is not None and inputs_embeds is not None:
+            raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
+        
+        if input_ids is not None:
+            outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        else:
+            outputs = self.bert(inputs_embeds=inputs_embeds, attention_mask=attention_mask)
+            
         pooled_output = outputs.last_hidden_state[:, 0]
         norm_out = self.norm(pooled_output)
         dropped_out = self.dropout(norm_out)
