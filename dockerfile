@@ -19,7 +19,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Установка Python-зависимостей
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu
+    pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cpu
 
 # Загрузка данных NLTK
 RUN python -m nltk.downloader stopwords punkt && \
@@ -57,6 +57,6 @@ COPY --from=builder --chown=appuser:appuser /opt/nltk_data /opt/nltk_data
 COPY --chown=appuser:appuser ./api_gateway/app .
 # Копирование моделей
 COPY --chown=appuser:appuser ./ml_service/app/models/prioritization_model /app/ml_service/models/prioritization_model
-COPY --chown=appuser:appuser ./ml_service/app/models/saved_models /app/ml_service/models/saved_models
+COPY --chown=appuser:appuser ./ml_service/app/models/custom_prioritization_model /app/ml_service/models/custom_prioritization_model
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
