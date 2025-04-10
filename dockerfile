@@ -57,6 +57,5 @@ COPY --from=builder --chown=appuser:appuser /opt/nltk_data /opt/nltk_data
 COPY --chown=appuser:appuser ./api_gateway/app .
 # Копирование моделей
 COPY --chown=appuser:appuser ./ml_service/app/models/prioritization_model /app/ml_service/models/prioritization_model
-COPY --chown=appuser:appuser ./ml_service/app/models/custom_prioritization_model /app/ml_service/models/custom_prioritization_model
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]

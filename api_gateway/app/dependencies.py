@@ -10,3 +10,4 @@ async def get_session()->AsyncSession:
 
 
 SessionDependency = Annotated[AsyncSession, Depends(get_session)]
+

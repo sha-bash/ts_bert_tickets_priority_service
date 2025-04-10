@@ -2,12 +2,14 @@ import logging
 import asyncio
 import crud
 import models
+import schema 
 from models import Session
 from fastapi import FastAPI, HTTPException
+from fastapi_cache.decorator import cache
 from lifispan import lifespan
 from dependencies import SessionDependency
-from utils.model_loader import process_text
-import shema as shema
+from utils.model_loader import model_loader
+from async_timeout import timeout
 
 
 logging.basicConfig(level=logging.INFO)
@@ -24,15 +26,17 @@ app = FastAPI(
 async def status():
     return {"status": "API is running"}
     
-@app.post('/v1/bert_prediction', response_model=shema.CreateBERTResponse)
+@app.post('/v1/bert_prediction', response_model=schema.CreateBERTResponse)
+@cache(expire=300)
 async def add_predict(
-    predict_json: shema.CreatePredictRequest,
+    predict_json: schema.CreatePredictRequest,
     session: SessionDependency 
 ):
     '''
     Асинхронная функция принимает на вход строку обращения и производит ее приоритезацию с помощью модели BERT.
 
     Responses:
+
         200: Успешный ответ (см. CreateBERTPriorizationResponse).
 
         400: Неверный запрос (пустой текст или слишком длинный).
@@ -44,22 +48,26 @@ async def add_predict(
         text = str(predict_json.text)
         logging.info(f"Received text: {text}")
 
-        result = process_text(text)
+        result = await model_loader.process_text(text)
         logging.info(f"BERT prediction: {result}")
 
         # Создание объекта для БД
         db_prediction = models.Prediction(
-            custom_task_priority=result["custom_task_priority"],
-            custom_task_score=result["custom_priority_score"],
+            text_task=text,
             task_priority=result["task_priority"],
             priority_score=result["priority_score"]
         )
 
         # Сохранение в БД
-        await crud.add_prediction(session, db_prediction)
+        async with timeout(10):
+            await crud.add_prediction(session, db_prediction)
 
         return result
+
+    except asyncio.TimeoutError:
+        logging.error("Таймаут операции с БД")
+        raise HTTPException(status_code=504, detail="Таймаут сервиса")
+
     except Exception as e:
-        logging.error(f"Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-    
+        logging.error(f"Critical error: {e}")
+        raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")

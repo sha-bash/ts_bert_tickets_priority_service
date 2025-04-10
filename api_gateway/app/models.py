@@ -21,8 +21,7 @@ class Prediction(Base):
     __tablename__ = 'prediction'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    custom_task_priority: Mapped[str] = mapped_column(String, nullable=False)
-    custom_task_score: Mapped[float] = mapped_column(Float, nullable=False)
+    text_task: Mapped[str] = mapped_column(String, nullable=False)
     task_priority: Mapped[str] = mapped_column(String, nullable=False)
     priority_score: Mapped[float] = mapped_column(Float, nullable=False)
     date_add: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now())
@@ -31,8 +30,7 @@ class Prediction(Base):
     def dict(self):
         return {
             'id': self.id,
-            'custom_task_priority': self.custom_task_priority,
-            'custom_priority_score': self.custom_task_score,
+            'text_task': self.text_task,
             'task_priority': self.task_priority,
             'priority_score': self.priority_score,
             'date_add': self.date_add.isoformat(),

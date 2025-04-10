@@ -1,11 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CreatePredictRequest(BaseModel):
-    text: str
+    text: str = Field(..., max_length=1000, example="Текст обращения")
 
 class CreateBERTResponse(BaseModel):
-    custom_task_priority: str  
-    custom_priority_score: float 
     task_priority: str  
     priority_score: float
