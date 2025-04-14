@@ -6,3 +6,4 @@ venv
 __pycache__
 /ml_service/data/config/
 /ml_service/app/models/
+/ml_service/tests

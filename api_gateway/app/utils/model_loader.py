@@ -54,25 +54,34 @@ class AsyncModelLoader:
                 logger.warning(f"Retrying model load in {self.retry_delay} seconds... (Attempt {attempt+1}/{self.retry_count})")
                 await asyncio.sleep(self.retry_delay)
 
-    async def process_text(self, text: str):
-        """Асинхронная обработка текста"""
+    async def process_text(self, text: str, threshold: float = 0.85):
+        """Асинхронная обработка текста с учетом порога классификации"""
         if not self.prioritization_pipeline:
             raise RuntimeError("Model not initialized")
             
         # Предобработка текста
         text = re.sub(r"\s+", " ", text).strip()
         cleaned_text = re.sub(r"[^a-zA-Zа-яА-Я0-9\s]", "", text)
-        
+
         # Запуск предсказания в отдельном потоке
         loop = asyncio.get_event_loop()
         priority_result = await loop.run_in_executor(
             None,
-            partial(self.prioritization_pipeline, cleaned_text))
-        
+            partial(self.prioritization_pipeline, cleaned_text, return_all_scores=True)
+        )
+
+        # Извлечение вероятности класса "LABEL_1"
+        scores = priority_result[0]
+        score_label_1 = next((x["score"] for x in scores if x["label"] == "LABEL_1"), 0.0)
+
+        # Классификация по порогу
+        predicted_label = "LABEL_1" if score_label_1 >= threshold else "LABEL_0"
+
         return {
-            "task_priority": priority_result[0]["label"],
-            "priority_score": priority_result[0]["score"]
+            "task_priority": predicted_label,
+            "priority_score": score_label_1
         }
+
 
 # Инициализация асинхронного загрузчика
 model_loader = AsyncModelLoader()
