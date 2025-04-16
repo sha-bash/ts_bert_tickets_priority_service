@@ -10,6 +10,8 @@ from lifispan import lifespan
 from dependencies import SessionDependency
 from utils.model_loader import model_loader
 from async_timeout import timeout
+from utils.celery_app import celery
+from celery.result import AsyncResult
 
 
 logging.basicConfig(level=logging.INFO)
@@ -71,3 +73,34 @@ async def add_predict(
     except Exception as e:
         logging.error(f"Critical error: {e}")
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
+    
+@app.post('/v1/bert_prediction_async')
+async def add_predict_async(predict_json: schema.CreatePredictRequest):
+    """
+    Отправка задачи в Celery-очередь для фоновой обработки
+    """
+    try:
+        task = celery.send_task(
+            "process_text_task",
+            kwargs={"predict_data": predict_json.model_dump()}
+        )
+        return {"task_id": task.id, "status": "submitted"}
+    except Exception as e:
+        logging.error(f"Celery task failed to submit: {str(e)}")
+        raise HTTPException(status_code=500, detail="Ошибка постановки задачи в очередь")
+
+
+@app.get("/result/{task_id}")
+async def get_result(task_id: str):
+    """
+    Проверка статуса и получения результата Celery-задачи
+    """
+    task_result = AsyncResult(task_id)
+
+    if task_result.failed():
+        raise HTTPException(status_code=500, detail="Задача завершилась с ошибкой")
+
+    return {
+        "status": task_result.status,  # PENDING, STARTED, SUCCESS, FAILURE
+        "result": task_result.result if task_result.ready() else None,
+    }
