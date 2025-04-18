@@ -1,24 +1,23 @@
 import os
-from transformers import BertForSequenceClassification, BertTokenizer, pipeline
 import re
 import asyncio
-from functools import partial
-from pymystem3 import Mystem
 import logging
+from functools import partial
+from transformers import BertForSequenceClassification, BertTokenizer, pipeline
+from pymystem3 import Mystem
 
 logger = logging.getLogger(__name__)
-
 
 class AsyncModelLoader:
     def __init__(self):
         self.prioritization_pipeline = None
         self.retry_count = 3
         self.retry_delay = 5
+        self.mystem = Mystem()
 
     async def _load_model_async(self, model_path, task, num_labels):
         loop = asyncio.get_event_loop()
         try:
-            # Загрузка модели в отдельном потоке
             model = await loop.run_in_executor(
                 None,
                 partial(
@@ -28,20 +27,16 @@ class AsyncModelLoader:
                     local_files_only=True
                 )
             )
-            
-            # Загрузка токенизатора
             tokenizer = await loop.run_in_executor(
                 None,
                 partial(BertTokenizer.from_pretrained, model_path, local_files_only=True)
             )
-            
             return pipeline(task, model=model, tokenizer=tokenizer)
         except Exception as e:
             logger.error(f"Model loading error: {str(e)}")
             raise
 
     async def initialize(self):
-        """Асинхронная инициализация с повторными попытками"""
         model_path = os.getenv('MODEL_PATH', "/app/ml_service/models/prioritization_model")
         for attempt in range(self.retry_count):
             try:
@@ -58,39 +53,26 @@ class AsyncModelLoader:
                 logger.warning(f"Retrying model load in {self.retry_delay} seconds... (Attempt {attempt+1}/{self.retry_count})")
                 await asyncio.sleep(self.retry_delay)
 
-    async def process_text(self, text: str, threshold: float = 0.70): 
-        """Асинхронная обработка текста с учетом порога классификации"""
+    async def process_text(self, text: str, threshold: float = 0.70):
         if not self.prioritization_pipeline:
             raise RuntimeError("Model not initialized")
-        
-        # Шаг 1: Приведение текста к нижнему регистру
-        text = text.lower()
 
-        # Шаг 2: Удаление всех переносов строк (текст должен идти одной строкой)
-        text = re.sub(r"\s+", " ", text).strip()
-
-        # Шаг 3: Удаление всех знаков препинания и кавычек
+        text = re.sub(r"\s+", " ", text.lower()).strip()
         text = re.sub(r"[^\w\s'\\:]+", "", text)
+        lemmatized_text = ''.join(self.mystem.lemmatize(text))
 
-        # Шаг 4: Лемматизация с использованием pymystem3
-        m = Mystem()
-        lemmatized_text = ''.join(m.lemmatize(text))
-
-        # Шаг 5: Предсказание
         loop = asyncio.get_event_loop()
         priority_result = await loop.run_in_executor(
             None,
-            partial(self.prioritization_pipeline, lemmatized_text, top_k=None)
+            partial(self.prioritization_pipeline, lemmatized_text)
         )
 
-        # Проверка и извлечение
-        if not isinstance(priority_result, list) or not isinstance(priority_result[0], list):
+        logger.info(f"Raw prediction result: {priority_result}")
+
+        if not isinstance(priority_result, list) or not all(isinstance(x, dict) for x in priority_result):
             raise ValueError(f"Unexpected prediction format: {priority_result}")
 
-        scores = priority_result[0]
-        score_label_1 = next((x["score"] for x in scores if x["label"] == "LABEL_1"), 0.0)
-
-        # Классификация по порогу
+        score_label_1 = next((x["score"] for x in priority_result if x["label"] in ("1", "LABEL_1")), 0.0)
         predicted_label = "LABEL_1" if score_label_1 >= threshold else "LABEL_0"
 
         return {
@@ -98,6 +80,4 @@ class AsyncModelLoader:
             "priority_score": score_label_1
         }
 
-
-# Инициализация асинхронного загрузчика
 model_loader = AsyncModelLoader()
