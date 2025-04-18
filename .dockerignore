@@ -1,5 +1,10 @@
 .git
-__pycache__
+__pycache__/
 *.pyc
 .env
 venv
+*.tar.gz
+*.whl
+tests/
+*.pyo
+*.pyd

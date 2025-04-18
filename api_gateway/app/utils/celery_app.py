@@ -5,6 +5,7 @@ celery = Celery(
     "worker",
     broker=f"redis://{os.getenv('REDIS_HOST')}:{os.getenv('REDIS_PORT')}/0",
     backend=f"redis://{os.getenv('REDIS_HOST')}:{os.getenv('REDIS_PORT')}/1",
+    include=["utils.tasks"]
 )
 
 celery.conf.update(

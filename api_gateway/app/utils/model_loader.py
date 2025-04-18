@@ -1,10 +1,13 @@
+import os
 from transformers import BertForSequenceClassification, BertTokenizer, pipeline
 import re
 import asyncio
 from functools import partial
+from pymystem3 import Mystem
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 class AsyncModelLoader:
     def __init__(self):
@@ -21,14 +24,15 @@ class AsyncModelLoader:
                 partial(
                     BertForSequenceClassification.from_pretrained,
                     model_path,
-                    num_labels=num_labels
+                    num_labels=num_labels,
+                    local_files_only=True
                 )
             )
             
             # Загрузка токенизатора
             tokenizer = await loop.run_in_executor(
                 None,
-                partial(BertTokenizer.from_pretrained, model_path)
+                partial(BertTokenizer.from_pretrained, model_path, local_files_only=True)
             )
             
             return pipeline(task, model=model, tokenizer=tokenizer)
@@ -38,7 +42,7 @@ class AsyncModelLoader:
 
     async def initialize(self):
         """Асинхронная инициализация с повторными попытками"""
-        model_path = "/app/ml_service/models/prioritization_model"
+        model_path = os.getenv('MODEL_PATH', "/app/ml_service/models/prioritization_model")
         for attempt in range(self.retry_count):
             try:
                 self.prioritization_pipeline = await self._load_model_async(
@@ -54,23 +58,35 @@ class AsyncModelLoader:
                 logger.warning(f"Retrying model load in {self.retry_delay} seconds... (Attempt {attempt+1}/{self.retry_count})")
                 await asyncio.sleep(self.retry_delay)
 
-    async def process_text(self, text: str, threshold: float = 0.85):
+    async def process_text(self, text: str, threshold: float = 0.70): 
         """Асинхронная обработка текста с учетом порога классификации"""
         if not self.prioritization_pipeline:
             raise RuntimeError("Model not initialized")
-            
-        # Предобработка текста
-        text = re.sub(r"\s+", " ", text).strip()
-        cleaned_text = re.sub(r"[^a-zA-Zа-яА-Я0-9\s]", "", text)
+        
+        # Шаг 1: Приведение текста к нижнему регистру
+        text = text.lower()
 
-        # Запуск предсказания в отдельном потоке
+        # Шаг 2: Удаление всех переносов строк (текст должен идти одной строкой)
+        text = re.sub(r"\s+", " ", text).strip()
+
+        # Шаг 3: Удаление всех знаков препинания и кавычек
+        text = re.sub(r"[^\w\s'\\:]+", "", text)
+
+        # Шаг 4: Лемматизация с использованием pymystem3
+        m = Mystem()
+        lemmatized_text = ''.join(m.lemmatize(text))
+
+        # Шаг 5: Предсказание
         loop = asyncio.get_event_loop()
         priority_result = await loop.run_in_executor(
             None,
-            partial(self.prioritization_pipeline, cleaned_text, return_all_scores=True)
+            partial(self.prioritization_pipeline, lemmatized_text, top_k=None)
         )
 
-        # Извлечение вероятности класса "LABEL_1"
+        # Проверка и извлечение
+        if not isinstance(priority_result, list) or not isinstance(priority_result[0], list):
+            raise ValueError(f"Unexpected prediction format: {priority_result}")
+
         scores = priority_result[0]
         score_label_1 = next((x["score"] for x in scores if x["label"] == "LABEL_1"), 0.0)
 

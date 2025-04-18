@@ -13,12 +13,15 @@ services:
     ports:
       - "8080:80"
     environment:
+      # Database
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: api_db 
+      POSTGRES_HOST: api_db
       POSTGRES_PORT: 5432
-      REDIS_HOST: redis  
+
+      # Redis
+      REDIS_HOST: redis
       REDIS_PORT: 6379
     networks:
       - dev_network
@@ -27,6 +30,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/status"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
     restart: unless-stopped
 
   api_db:
@@ -50,7 +58,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
-  redis:  
+  redis:
     image: redis:7.2-alpine
     container_name: redis
     ports:
@@ -69,13 +77,13 @@ services:
   celery_worker:
     build: .
     container_name: celery_worker
-    command: celery -A utils.celery_app.celery worker --loglevel=info
+    command: celery -A worker worker --loglevel=info
     env_file:
       - .env
     depends_on:
-      redis:
-        condition: service_healthy
       api_db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - dev_network

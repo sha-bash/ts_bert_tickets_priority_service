@@ -99,8 +99,13 @@ async def get_result(task_id: str):
 
     if task_result.failed():
         raise HTTPException(status_code=500, detail="Задача завершилась с ошибкой")
+    
+    meta = task_result.result if task_result.ready() else None
 
     return {
-        "status": task_result.status,  # PENDING, STARTED, SUCCESS, FAILURE
-        "result": task_result.result if task_result.ready() else None,
+        "status": task_result.status,
+        "result": meta.get("result") if meta else None,
+        "start_time": meta.get("start_time") if meta else None,
+        "end_time": meta.get("end_time") if meta else None,
+        "duration_seconds": meta.get("duration_seconds") if meta else None,
     }
