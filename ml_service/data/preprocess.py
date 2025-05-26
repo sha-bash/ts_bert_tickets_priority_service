@@ -1,14 +1,14 @@
 import re
-import string
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-import pymystem3
+# import string
+# from nltk.corpus import stopwords
+# from nltk.tokenize import word_tokenize
+# import pymystem3
 
 class TextPreprocessor:
     def __init__(self, language='russian'):
         self.language = language
-        self.stop_words = set(stopwords.words(language))
-        self.lemmatizer = pymystem3.Mystem()  
+        # self.stop_words = set(stopwords.words(language))
+        # self.lemmatizer = pymystem3.Mystem()  
 
     def preprocess_text(self, text):
         if not isinstance(text, str):
@@ -24,18 +24,18 @@ class TextPreprocessor:
             text = re.sub(r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}', '[DATE]', text)
             text = re.sub(r'[^а-яА-Я0-9\s-]', '', text)
         
-            # Нормализация текста
-            text = text.lower()
-            text = text.translate(str.maketrans('', '', string.punctuation))
+            # # Нормализация текста
+            # text = text.lower()
+            # text = text.translate(str.maketrans('', '', string.punctuation))
         
-            # Удаление стоп-слов и лемматизация
-            words = word_tokenize(text)
-            filtered_words = [self.lemmatizer.lemmatize(word)[0] for word in words if word.lower() not in self.stop_words]
+            # # Удаление стоп-слов и лемматизация
+            # words = word_tokenize(text)
+            # filtered_words = [self.lemmatizer.lemmatize(word)[0] for word in words if word.lower() not in self.stop_words]
             
-            if not filtered_words:
-                raise ValueError("Пустой словарный запас; возможно, документы содержат только стоп-слова")
+            # if not filtered_words:
+            #     raise ValueError("Пустой словарный запас; возможно, документы содержат только стоп-слова")
             
-            text = ' '.join(filtered_words)
+            # text = ' '.join(filtered_words)
         
             # Удаление повторяющихся символов
             text = re.sub(r'(.)\1{2,}', r'\1', text)
